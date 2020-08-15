@@ -1,111 +1,16 @@
-library(dplyr)
-library(ggplot2)
-library(reshape2)
-library(gridExtra)
-library(grid)
-if(file.exists("household_power_consumption.txt")) {
-    data0 <- read.table("household_power_consumption.txt",
-                        sep = ";", header = TRUE, stringsAsFactors = FALSE)
-} else if(file.exists("exdata-data-household_power_consumption.zip")) {
-    data0 <- read.table(unz("exdata-data-household_power_consumption.zip",
-                            "household_power_consumption.txt"),
-                        sep = ";", header = TRUE, stringsAsFactors = FALSE)
-} else {
-    temp <- tempfile()
-    download.file("https://archive.ics.uci.edu/ml/machine-learning-databases/00235/household_power_consumption.zip",temp)
-    data <- read.table(unz(temp, "household_power_consumption.txt"),
-                       sep = ";", header = TRUE, stringsAsFactors = FALSE)
-    unlink(temp)
+if(!file.exists("exdata-data-household_power_consumption.zip")) {
+        temp <- tempfile()
+        download.file("http://d396qusza40orc.cloudfront.net/exdata%2Fdata%2Fhousehold_power_consumption.zip",temp)
+        file <- unzip(temp)
+        unlink(temp)
 }
-data0 <- tbl_df(data0)
-dataFil <- filter(data0, Date == "2/2/2007" | Date == "1/2/2007")
-dataFil <- mutate(dataFil, Date_Time = paste(Date, Time, sep = " "))
-dataFil$Date_Time <- strptime(dataFil$Date_Time, "%d/%m/%Y %H:%M:%S")
-dataFil[, 3:9] <- lapply(dataFil[, 3:9], as.numeric)
-dataFil <- dataFil[, c(10, 3:9)]
-dataFil <- rename(dataFil, Kitchen = Sub_metering_1,
-                  Laundry_room = Sub_metering_2, Water_heater_AC = Sub_metering_3)
-                  
-hist(dataFil$Global_active_power, col = "red",
-     xlab = "Global Active Power (kilowatts)", main = "Global Active Power")
-     
-g1 <- (ggplot(dataFil, aes(x = Global_active_power))
-       + geom_histogram(fill = "#F8766D")
-       + labs(x = "Global Active Power (kilowatts)", title = "Global Active Power"))
-g1
-
-plot(dataFil$Date_Time, dataFil$Global_active_power, type = "l",
-     ylab = "Global Active Power (kilowatts)", xlab = "")
-     
-g2 <- (ggplot(dataFil, aes(x = Date_Time, y = Global_active_power))
-       + geom_line() + xlab("") + ylab("Global Active Power (kilowatts)"))
-g2
-
-plot(dataFil$Date_Time, dataFil$Kitchen, type = "l", ylab = "Energy sub metering", xlab = "")
-points(dataFil$Date_Time, dataFil$Laundry_room, type = "l", col = "red")
-points(dataFil$Date_Time, dataFil$Water_heater_AC, type = "l", col = "blue")
-legend("topright", lty = c(1,1,1), lwd = c(2,2,2), col = c("black", "red", "blue"),
-       legend = c("Sub_metering_1", "Sub_metering_2", "Sub_metering_3"))
-       
-cols <- c("Kitchen"= "black", "Laundry room" = "#00BFC4", "Water heater / AC" = "#F8766D")
-g3 <- (ggplot(dataFil)
-      + geom_line(aes(Date_Time, Kitchen, color = "Kitchen"))
-      + geom_line(aes(Date_Time, Laundry_room, color = "Laundry room"))
-      + geom_line(aes(Date_Time, Water_heater_AC, color = "Water heater / AC"))
-      + labs(x = "", y = "Energy sub metering")
-      + scale_colour_manual(name="",values=cols)
-      + theme(legend.justification = c(1, 1), legend.position = c(1, 1), legend.title = element_blank()))
-g3
-
-data_sub <- dataFil[, c(1, 6:8)]
-data_sub$Date_Time <- as.character(data_sub$Date_Time)
-data_melt <- melt(data_sub, id.vars = "Date_Time")
-data_melt$Date_Time <- strptime(data_melt$Date_Time, "%Y-%m-%d %H:%M:%S")
-
-g4 <- (ggplot(data_melt)
-    + geom_line(aes(x=Date_Time, y=value, colour=variable))
-    + labs(x = "", y = "Energy sub metering")
-    + theme(legend.justification = c(1, 1), legend.position = c(1, 1), legend.title = element_blank()))
-g4
-
-par(mfrow = c(2,2))
-plot(dataFil$Date_Time, dataFil$Global_active_power, type = "l", ylab = "Global Active Power", xlab = "")
-
-plot(dataFil$Date_Time, dataFil$Voltage, type = "l", ylab = "Voltage", xlab = "datetime")
-
-plot(dataFil$Date_Time, dataFil$Kitchen, type = "l", ylab = "Energy sub metering", xlab = "")
-points(dataFil$Date_Time, dataFil$Laundry_room, type = "l", col = "red")
-points(dataFil$Date_Time, dataFil$Water_heater_AC, type = "l", col = "blue")
-legend("topright", lty = c(1,1,1), lwd = c(2,2,2), col = c("black", "red", "blue"),
-       legend = c("Sub_metering_1", "Sub_metering_2", "Sub_metering_3"), bty = "n", cex = 0.75)
-
-plot(dataFil$Date_Time, dataFil$Global_reactive_power,
-     type = "l", ylab = "Global reactive power", xlab = "datetime")
-     
-g5 <- (ggplot(dataFil, aes(x = Date_Time, y = Global_active_power))
-       + geom_line() + xlab("") + ylab("Global Active Power")
-       + theme(axis.title.y = element_text(size = 10))
-       + theme(axis.text.x=element_text(size=6), axis.text.y=element_text(size=6)))
-
-g6 <- (ggplot(dataFil, aes(x = Date_Time, y = Voltage))
-       + geom_line() + xlab("") + ylab("Voltage")
-       + theme(axis.title.y = element_text(size = 10))
-       + theme(axis.text.x=element_text(size=6), axis.text.y=element_text(size=6)))
-
-g7 <- (ggplot(data_melt)
-       + geom_line(aes(x=Date_Time, y=value, colour=variable))
-       + labs(x = "", y = "Energy sub metering")
-       + theme(axis.title.y = element_text(size = 10))
-       + theme(legend.justification = c(1, 1), legend.position = c(1, 1))
-       + theme(legend.title = element_blank(), legend.margin = unit(-12, "pt"))
-       + theme(legend.key.size = unit(8, "pt"), legend.text = element_text(size=6))
-       + theme(axis.text.x=element_text(size=6), axis.text.y=element_text(size=6)))
-
-g8 <- (ggplot(dataFil, aes(x = Date_Time, y = Global_reactive_power))
-       + geom_line() + xlab("") + ylab("Global Rective Power")
-       + theme(axis.title.y = element_text(size = 10))
-       + theme(axis.text.x=element_text(size=6), axis.text.y=element_text(size=6)))
-
-grid.arrange(g5, g6, g7, g8, ncol=2, nrow=2)
-
-
+power <- read.table(file, header=T, sep=";")
+power$Date <- as.Date(power$Date, format="%d/%m/%Y")
+df <- power[(power$Date=="2007-02-01") | (power$Date=="2007-02-02"),]
+df$Global_active_power <- as.numeric(as.character(df$Global_active_power))
+df$Global_reactive_power <- as.numeric(as.character(df$Global_reactive_power))
+df$Voltage <- as.numeric(as.character(df$Voltage))
+df <- transform(df, timestamp=as.POSIXct(paste(Date, Time)), "%d/%m/%Y %H:%M:%S")
+df$Sub_metering_1 <- as.numeric(as.character(df$Sub_metering_1))
+df$Sub_metering_2 <- as.numeric(as.character(df$Sub_metering_2))
+df$Sub_metering_3 <- as.numeric(as.character(df$Sub_metering_3))
